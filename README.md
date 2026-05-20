@@ -93,7 +93,6 @@ The following endpoints are not yet implemented but are planned for future updat
 - [ ] Update multiple contacts (`PATCH /contacts/batch`)
 - [ ] Update contact properties (`PATCH /contacts/{contact_id}`)
 - [ ] Get viewed pages history (`GET /contacts/{contact_id}/viewed-pages`)
-- [ ] Get contact properties (`GET /contact-properties`)
 - [ ] Get contact messages (`POST /contacts/{contact_id}/messages`)
 
 ## Contributing
