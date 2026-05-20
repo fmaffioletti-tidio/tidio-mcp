@@ -9,6 +9,7 @@ from server import (
     delete_contact,
     delete_ticket,
     get_contact_details,
+    get_contact_properties,
     get_contacts,
     get_departments,
     get_operators,
@@ -311,6 +312,86 @@ class TestGetContacts:
 
         # Assert
         assert result == {"status": "ok", "data": contacts_data}
+
+
+class TestGetContactProperties:
+    @pytest.mark.unit
+    @responses.activate
+    def test_get_contact_properties_success(self):
+        # Arrange
+        properties_data = {
+            "properties": [
+                {"name": "name", "label": "Name", "type": "text"},
+                {"name": "email", "label": "Email", "type": "email"},
+                {"name": "phone", "label": "Phone", "type": "phone"},
+                {"name": "company_size", "label": "Company Size", "type": "number"},
+                {"name": "website", "label": "Website", "type": "url"},
+            ],
+            "meta": {
+                "cursor": None,
+            },
+        }
+        responses.add(
+            responses.GET,
+            "https://api.tidio.com/contact-properties",
+            json=properties_data,
+            status=200,
+        )
+
+        # Act
+        result = get_contact_properties()
+
+        # Assert
+        assert result == {"status": "ok", "data": properties_data}
+
+    @pytest.mark.unit
+    @responses.activate
+    def test_get_contact_properties_empty_response(self):
+        # Arrange
+        properties_data = {
+            "properties": [],
+            "meta": {
+                "cursor": None,
+            },
+        }
+        responses.add(
+            responses.GET,
+            "https://api.tidio.com/contact-properties",
+            json=properties_data,
+            status=200,
+        )
+
+        # Act
+        result = get_contact_properties()
+
+        # Assert
+        assert result == {"status": "ok", "data": properties_data}
+
+    @pytest.mark.unit
+    @responses.activate
+    def test_get_contact_properties_with_cursor(self):
+        # Arrange
+        cursor = "aWRfX2U2YTgyYTc0LTExNzAtNGY1Ny1hMDMxLWIzNmYzZjZiYzA5Mw=="
+        properties_data = {
+            "properties": [
+                {"name": "custom_field", "label": "Custom Field", "type": "text"},
+            ],
+            "meta": {
+                "cursor": "next_cursor_value",
+            },
+        }
+        responses.add(
+            responses.GET,
+            f"https://api.tidio.com/contact-properties?cursor={cursor}",
+            json=properties_data,
+            status=200,
+        )
+
+        # Act
+        result = get_contact_properties(cursor=cursor)
+
+        # Assert
+        assert result == {"status": "ok", "data": properties_data}
 
 
 class TestGetContactDetails:

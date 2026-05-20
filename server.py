@@ -370,5 +370,34 @@ def add_internal_note_to_a_ticket(
     return _tool_call_succeed(data=response)
 
 
+@mcp.tool(title="Get Contact Properties")
+def get_contact_properties(cursor: str = None) -> dict:
+    """
+    Get all contact properties from Tidio. Contact properties are fields that can be associated
+    with contacts, including default properties (name, email, phone, etc.) and custom ones.
+
+    This endpoint supports pagination. If the response contains meta.cursor with a non-null value,
+    there are more results available. Pass that cursor value to the next request to fetch the next page.
+    When meta.cursor is null, you've reached the end of the list.
+
+    Args:
+        cursor (str, optional): Pagination cursor from previous response. Use the value from meta.cursor
+            to fetch the next page of results.
+
+    Returns:
+        Dict: A dictionary containing contact properties and pagination metadata.
+            Each property has: name (internal identifier), label (human-readable), and
+            type (one of: text, number, email, phone, url).
+    """
+    endpoint = "/contact-properties"
+
+    if cursor is not None:
+        endpoint += f"?{urlencode({'cursor': cursor})}"
+
+    response = tidio_api_client.get(endpoint)
+
+    return _tool_call_succeed(data=response)
+
+
 if __name__ == "__main__":
     mcp.run(transport="stdio")
