@@ -113,6 +113,169 @@ def get_contact_details(contact_id: str) -> dict:
     return _tool_call_succeed(data=response)
 
 
+@mcp.tool(title="Create Contact")
+def create_contact(
+    distinct_id: str,
+    email: str = None,
+    phone: str = None,
+    first_name: str = None,
+    last_name: str = None,
+    email_consent: str = None,
+    properties: list = None,
+) -> dict:
+    """
+    Create a new contact in Tidio. Always creates a new contact; existing data is never overwritten.
+    At least one of email, first_name, last_name, or phone must be provided.
+
+    Args:
+        distinct_id (str): Required. ID of the contact in the external system. Maximum 55 characters.
+        email (str, optional): Contact email address in RFC822 format.
+        phone (str, optional): Contact phone number.
+        first_name (str, optional): Contact's first name.
+        last_name (str, optional): Contact's last name.
+        email_consent (str, optional): Email consent status.
+            Must be one of: 'subscribed', 'unsubscribed'.
+        properties (list, optional): List of custom contact properties.
+            Each item must be a dict with 'name' (max 128 chars) and 'value' (max 1000 chars) fields.
+            Example: [{"name": "plan", "value": "premium"}, {"name": "score", "value": 42}]
+
+    Returns:
+        Dict: A dictionary containing the created contact ID.
+
+    Raises:
+        ValueError: If any of the provided arguments have invalid values.
+    """
+    if len(distinct_id) > 55:
+        raise ValueError("Distinct ID must not exceed 55 characters")
+
+    if email is None and phone is None and first_name is None and last_name is None:
+        raise ValueError("At least one of email, first_name, last_name, or phone must be provided")
+
+    if email_consent is not None and email_consent not in ["subscribed", "unsubscribed"]:
+        raise ValueError("Email consent must be one of: subscribed, unsubscribed")
+
+    if properties is not None:
+        if not isinstance(properties, list):
+            raise ValueError("Properties must be a list of objects")
+        for prop in properties:
+            if not isinstance(prop, dict):
+                raise ValueError("Each property must be a dictionary object")
+            if "name" not in prop or "value" not in prop:
+                raise ValueError("Each property must contain both 'name' and 'value' fields")
+            if len(str(prop["name"])) > 128:
+                raise ValueError("Property name must not exceed 128 characters")
+            if len(str(prop["value"])) > 1000:
+                raise ValueError("Property value must not exceed 1000 characters")
+
+    contact_data: dict = {"distinct_id": distinct_id}
+
+    if email is not None:
+        contact_data["email"] = email
+
+    if phone is not None:
+        contact_data["phone"] = phone
+
+    if first_name is not None:
+        contact_data["first_name"] = first_name
+
+    if last_name is not None:
+        contact_data["last_name"] = last_name
+
+    if email_consent is not None:
+        contact_data["email_consent"] = email_consent
+
+    if properties is not None:
+        contact_data["properties"] = properties
+
+    response = tidio_api_client.post("/contacts", json_data=contact_data)
+
+    return _tool_call_succeed(data=response)
+
+
+@mcp.tool(title="Update Contact")
+def update_contact(
+    contact_id: str,
+    email: str = None,
+    phone: str = None,
+    first_name: str = None,
+    last_name: str = None,
+    email_consent: str = None,
+    distinct_id: str = None,
+    properties: list = None,
+) -> dict:
+    """
+    Update a specific contact in Tidio. Pass only the fields you want to update.
+    Omitted fields remain unchanged; null values clear the field.
+
+    Args:
+        contact_id (str): Required. The UUID of the contact to update.
+        email (str, optional): Contact email address in RFC822 format.
+        phone (str, optional): Contact phone number.
+        first_name (str, optional): Contact's first name.
+        last_name (str, optional): Contact's last name.
+        email_consent (str, optional): Email consent status.
+            Must be one of: 'subscribed', 'unsubscribed'.
+        distinct_id (str, optional): External system identifier. Maximum 55 characters.
+        properties (list, optional): List of custom contact properties to update.
+            Each item must be a dict with 'name' (max 128 chars) and 'value' (max 1000 chars) fields.
+            Example: [{"name": "plan", "value": "premium"}, {"name": "score", "value": 42}]
+
+    Returns:
+        Dict: A dictionary with success status.
+
+    Raises:
+        ValueError: If any of the provided arguments have invalid values.
+    """
+    if email_consent is not None and email_consent not in ["subscribed", "unsubscribed"]:
+        raise ValueError("Email consent must be one of: subscribed, unsubscribed")
+
+    if distinct_id is not None and len(distinct_id) > 55:
+        raise ValueError("Distinct ID must not exceed 55 characters")
+
+    if properties is not None:
+        if not isinstance(properties, list):
+            raise ValueError("Properties must be a list of objects")
+        for prop in properties:
+            if not isinstance(prop, dict):
+                raise ValueError("Each property must be a dictionary object")
+            if "name" not in prop or "value" not in prop:
+                raise ValueError("Each property must contain both 'name' and 'value' fields")
+            if len(str(prop["name"])) > 128:
+                raise ValueError("Property name must not exceed 128 characters")
+            if len(str(prop["value"])) > 1000:
+                raise ValueError("Property value must not exceed 1000 characters")
+
+    update_data = {}
+
+    if email is not None:
+        update_data["email"] = email
+
+    if phone is not None:
+        update_data["phone"] = phone
+
+    if first_name is not None:
+        update_data["first_name"] = first_name
+
+    if last_name is not None:
+        update_data["last_name"] = last_name
+
+    if email_consent is not None:
+        update_data["email_consent"] = email_consent
+
+    if distinct_id is not None:
+        update_data["distinct_id"] = distinct_id
+
+    if properties is not None:
+        update_data["properties"] = properties
+
+    if not update_data:
+        raise ValueError("At least one parameter must be provided")
+
+    tidio_api_client.patch(f"/contacts/{contact_id}", json_data=update_data)
+
+    return _tool_call_succeed()
+
+
 @mcp.tool(title="Delete Contact")
 def delete_contact(contact_id: str) -> dict:
     """

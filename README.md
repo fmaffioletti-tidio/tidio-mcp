@@ -88,10 +88,8 @@ You can quickly get started using the ready-to-use Docker image `adrmrn/tidio-mc
 
 The following endpoints are not yet implemented but are planned for future updates:
 
-- [ ] Create contact (`POST /contacts`)
 - [ ] Create multiple contacts (`POST /contacts/batch`)
 - [ ] Update multiple contacts (`PATCH /contacts/batch`)
-- [ ] Update contact properties (`PATCH /contacts/{contact_id}`)
 - [ ] Get viewed pages history (`GET /contacts/{contact_id}/viewed-pages`)
 - [ ] Get contact messages (`POST /contacts/{contact_id}/messages`)
 
