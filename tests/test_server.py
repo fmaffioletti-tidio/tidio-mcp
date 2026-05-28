@@ -1070,27 +1070,51 @@ class TestCreateContact:
                 "At least one of email, first_name, last_name, or phone must be provided",
             ),
             (
-                {"distinct_id": "ext-123", "email": "a@b.com", "email_consent": "invalid"},
+                {
+                    "distinct_id": "ext-123",
+                    "email": "a@b.com",
+                    "email_consent": "invalid",
+                },
                 "Email consent must be one of: subscribed, unsubscribed",
             ),
             (
-                {"distinct_id": "ext-123", "email": "a@b.com", "properties": "not_a_list"},
+                {
+                    "distinct_id": "ext-123",
+                    "email": "a@b.com",
+                    "properties": "not_a_list",
+                },
                 "Properties must be a list of objects",
             ),
             (
-                {"distinct_id": "ext-123", "email": "a@b.com", "properties": ["not_a_dict"]},
+                {
+                    "distinct_id": "ext-123",
+                    "email": "a@b.com",
+                    "properties": ["not_a_dict"],
+                },
                 "Each property must be a dictionary object",
             ),
             (
-                {"distinct_id": "ext-123", "email": "a@b.com", "properties": [{"name": "plan"}]},
+                {
+                    "distinct_id": "ext-123",
+                    "email": "a@b.com",
+                    "properties": [{"name": "plan"}],
+                },
                 "Each property must contain both 'name' and 'value' fields",
             ),
             (
-                {"distinct_id": "ext-123", "email": "a@b.com", "properties": [{"name": "x" * 129, "value": "v"}]},
+                {
+                    "distinct_id": "ext-123",
+                    "email": "a@b.com",
+                    "properties": [{"name": "x" * 129, "value": "v"}],
+                },
                 "Property name must not exceed 128 characters",
             ),
             (
-                {"distinct_id": "ext-123", "email": "a@b.com", "properties": [{"name": "plan", "value": "x" * 1001}]},
+                {
+                    "distinct_id": "ext-123",
+                    "email": "a@b.com",
+                    "properties": [{"name": "plan", "value": "x" * 1001}],
+                },
                 "Property value must not exceed 1000 characters",
             ),
         ],
@@ -1122,7 +1146,10 @@ class TestCreateContact:
 
         # Assert
         assert result == {"status": "ok", "data": contact_data}
-        assert json.loads(responses.calls[0].request.body)["email_consent"] == email_consent
+        assert (
+            json.loads(responses.calls[0].request.body)["email_consent"]
+            == email_consent
+        )
 
 
 class TestUpdateContact:
@@ -1179,19 +1206,35 @@ class TestUpdateContact:
                 "Properties must be a list of objects",
             ),
             (
-                {"contact_id": "uuid", "email": "a@b.com", "properties": ["not_a_dict"]},
+                {
+                    "contact_id": "uuid",
+                    "email": "a@b.com",
+                    "properties": ["not_a_dict"],
+                },
                 "Each property must be a dictionary object",
             ),
             (
-                {"contact_id": "uuid", "email": "a@b.com", "properties": [{"name": "plan"}]},
+                {
+                    "contact_id": "uuid",
+                    "email": "a@b.com",
+                    "properties": [{"name": "plan"}],
+                },
                 "Each property must contain both 'name' and 'value' fields",
             ),
             (
-                {"contact_id": "uuid", "email": "a@b.com", "properties": [{"name": "x" * 129, "value": "v"}]},
+                {
+                    "contact_id": "uuid",
+                    "email": "a@b.com",
+                    "properties": [{"name": "x" * 129, "value": "v"}],
+                },
                 "Property name must not exceed 128 characters",
             ),
             (
-                {"contact_id": "uuid", "email": "a@b.com", "properties": [{"name": "plan", "value": "x" * 1001}]},
+                {
+                    "contact_id": "uuid",
+                    "email": "a@b.com",
+                    "properties": [{"name": "plan", "value": "x" * 1001}],
+                },
                 "Property value must not exceed 1000 characters",
             ),
             (
@@ -1222,4 +1265,6 @@ class TestUpdateContact:
 
         # Assert
         assert result == {"status": "ok", "data": {}}
-        assert json.loads(responses.calls[0].request.body) == {"email_consent": email_consent}
+        assert json.loads(responses.calls[0].request.body) == {
+            "email_consent": email_consent
+        }

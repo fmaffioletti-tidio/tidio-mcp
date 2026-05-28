@@ -149,9 +149,14 @@ def create_contact(
         raise ValueError("Distinct ID must not exceed 55 characters")
 
     if email is None and phone is None and first_name is None and last_name is None:
-        raise ValueError("At least one of email, first_name, last_name, or phone must be provided")
+        raise ValueError(
+            "At least one of email, first_name, last_name, or phone must be provided"
+        )
 
-    if email_consent is not None and email_consent not in ["subscribed", "unsubscribed"]:
+    if email_consent is not None and email_consent not in [
+        "subscribed",
+        "unsubscribed",
+    ]:
         raise ValueError("Email consent must be one of: subscribed, unsubscribed")
 
     if properties is not None:
@@ -161,7 +166,9 @@ def create_contact(
             if not isinstance(prop, dict):
                 raise ValueError("Each property must be a dictionary object")
             if "name" not in prop or "value" not in prop:
-                raise ValueError("Each property must contain both 'name' and 'value' fields")
+                raise ValueError(
+                    "Each property must contain both 'name' and 'value' fields"
+                )
             if len(str(prop["name"])) > 128:
                 raise ValueError("Property name must not exceed 128 characters")
             if len(str(prop["value"])) > 1000:
@@ -226,7 +233,10 @@ def update_contact(
     Raises:
         ValueError: If any of the provided arguments have invalid values.
     """
-    if email_consent is not None and email_consent not in ["subscribed", "unsubscribed"]:
+    if email_consent is not None and email_consent not in [
+        "subscribed",
+        "unsubscribed",
+    ]:
         raise ValueError("Email consent must be one of: subscribed, unsubscribed")
 
     if distinct_id is not None and len(distinct_id) > 55:
@@ -239,7 +249,9 @@ def update_contact(
             if not isinstance(prop, dict):
                 raise ValueError("Each property must be a dictionary object")
             if "name" not in prop or "value" not in prop:
-                raise ValueError("Each property must contain both 'name' and 'value' fields")
+                raise ValueError(
+                    "Each property must contain both 'name' and 'value' fields"
+                )
             if len(str(prop["name"])) > 128:
                 raise ValueError("Property name must not exceed 128 characters")
             if len(str(prop["value"])) > 1000:
