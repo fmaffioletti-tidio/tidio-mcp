@@ -1062,6 +1062,10 @@ class TestCreateContact:
         "kwargs,expected_error",
         [
             (
+                {"distinct_id": "", "email": "a@b.com"},
+                "Distinct ID must not be empty",
+            ),
+            (
                 {"distinct_id": "x" * 56, "email": "a@b.com"},
                 "Distinct ID must not exceed 55 characters",
             ),

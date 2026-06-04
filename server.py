@@ -147,10 +147,16 @@ def create_contact(
     Raises:
         ValueError: If any of the provided arguments have invalid values.
     """
+    if not distinct_id:
+        raise ValueError("Distinct ID must not be empty")
+
     if len(distinct_id) > 55:
         raise ValueError("Distinct ID must not exceed 55 characters")
 
-    if email is None and phone is None and first_name is None and last_name is None:
+    no_field_provided = all(
+        field is None for field in (email, phone, first_name, last_name)
+    )
+    if no_field_provided:
         raise ValueError(
             "At least one of email, first_name, last_name, or phone must be provided"
         )
@@ -162,39 +168,17 @@ def create_contact(
         raise ValueError("Email consent must be one of: subscribed, unsubscribed")
 
     if properties is not None:
-        if not isinstance(properties, list):
-            raise ValueError("Properties must be a list of objects")
-        for prop in properties:
-            if not isinstance(prop, dict):
-                raise ValueError("Each property must be a dictionary object")
-            if "name" not in prop or "value" not in prop:
-                raise ValueError(
-                    "Each property must contain both 'name' and 'value' fields"
-                )
-            if len(str(prop["name"])) > 128:
-                raise ValueError("Property name must not exceed 128 characters")
-            if len(str(prop["value"])) > 1000:
-                raise ValueError("Property value must not exceed 1000 characters")
+        _validate_properties(properties)
 
-    contact_data: dict = {"distinct_id": distinct_id}
-
-    if email is not None:
-        contact_data["email"] = email
-
-    if phone is not None:
-        contact_data["phone"] = phone
-
-    if first_name is not None:
-        contact_data["first_name"] = first_name
-
-    if last_name is not None:
-        contact_data["last_name"] = last_name
-
-    if email_consent is not None:
-        contact_data["email_consent"] = email_consent
-
-    if properties is not None:
-        contact_data["properties"] = properties
+    contact_data = strip_none(
+        distinct_id=distinct_id,
+        email=email,
+        phone=phone,
+        first_name=first_name,
+        last_name=last_name,
+        email_consent=email_consent,
+        properties=properties,
+    )
 
     response = tidio_api_client.post("/contacts", json_data=contact_data)
 
@@ -235,52 +219,32 @@ def update_contact(
     Raises:
         ValueError: If any of the provided arguments have invalid values.
     """
-    if email_consent is not _UNSET and email_consent is not None and email_consent not in [
-        "subscribed",
-        "unsubscribed",
-    ]:
+    invalid_email_consent = (
+        email_consent is not _UNSET
+        and email_consent is not None
+        and email_consent not in ["subscribed", "unsubscribed"]
+    )
+    if invalid_email_consent:
         raise ValueError("Email consent must be one of: subscribed, unsubscribed")
 
-    if distinct_id is not _UNSET and distinct_id is not None and len(distinct_id) > 55:
+    invalid_distinct_id = (
+        distinct_id is not _UNSET and distinct_id is not None and len(distinct_id) > 55
+    )
+    if invalid_distinct_id:
         raise ValueError("Distinct ID must not exceed 55 characters")
 
     if properties is not _UNSET and properties is not None:
-        if not isinstance(properties, list):
-            raise ValueError("Properties must be a list of objects")
-        for prop in properties:
-            if not isinstance(prop, dict):
-                raise ValueError("Each property must be a dictionary object")
-            if "name" not in prop or "value" not in prop:
-                raise ValueError(
-                    "Each property must contain both 'name' and 'value' fields"
-                )
-            if len(str(prop["name"])) > 128:
-                raise ValueError("Property name must not exceed 128 characters")
-            if len(str(prop["value"])) > 1000:
-                raise ValueError("Property value must not exceed 1000 characters")
+        _validate_properties(properties)
 
-    update_data = {}
-
-    if email is not _UNSET:
-        update_data["email"] = email
-
-    if phone is not _UNSET:
-        update_data["phone"] = phone
-
-    if first_name is not _UNSET:
-        update_data["first_name"] = first_name
-
-    if last_name is not _UNSET:
-        update_data["last_name"] = last_name
-
-    if email_consent is not _UNSET:
-        update_data["email_consent"] = email_consent
-
-    if distinct_id is not _UNSET:
-        update_data["distinct_id"] = distinct_id
-
-    if properties is not _UNSET:
-        update_data["properties"] = properties
+    update_data = strip_unset(
+        email=email,
+        phone=phone,
+        first_name=first_name,
+        last_name=last_name,
+        email_consent=email_consent,
+        distinct_id=distinct_id,
+        properties=properties,
+    )
 
     if not update_data:
         raise ValueError("At least one parameter must be provided")
@@ -574,6 +538,30 @@ def get_contact_properties(cursor: str = None) -> dict:
     response = tidio_api_client.get(endpoint)
 
     return _tool_call_succeed(data=response)
+
+
+def strip_unset(**kwargs):
+    return {k: v for k, v in kwargs.items() if v is not _UNSET}
+
+
+def strip_none(**kwargs):
+    return {k: v for k, v in kwargs.items() if v is not None}
+
+
+def _validate_properties(properties) -> None:
+    if not isinstance(properties, list):
+        raise ValueError("Properties must be a list of objects")
+    for prop in properties:
+        if not isinstance(prop, dict):
+            raise ValueError("Each property must be a dictionary object")
+        if "name" not in prop or "value" not in prop:
+            raise ValueError(
+                "Each property must contain both 'name' and 'value' fields"
+            )
+        if len(str(prop["name"])) > 128:
+            raise ValueError("Property name must not exceed 128 characters")
+        if len(str(prop["value"])) > 1000:
+            raise ValueError("Property value must not exceed 1000 characters")
 
 
 if __name__ == "__main__":
