@@ -12,6 +12,11 @@ mcp = FastMCP("Tidio")
 
 _UNSET = object()
 
+MAX_DISTINCT_ID_LENGTH = 55
+MAX_PROPERTY_NAME_LENGTH = 128
+MAX_PROPERTY_VALUE_LENGTH = 1000
+EMAIL_CONSENT_VALUES = ("subscribed", "unsubscribed")
+
 tidio_api_client = TidioApiClient(
     client_id=os.getenv("TIDIO_CLIENT_ID", ""),
     client_secret=os.getenv("TIDIO_CLIENT_SECRET", ""),
@@ -118,12 +123,12 @@ def get_contact_details(contact_id: str) -> dict:
 @mcp.tool(title="Create Contact")
 def create_contact(
     distinct_id: str,
-    email: str = None,
-    phone: str = None,
-    first_name: str = None,
-    last_name: str = None,
-    email_consent: str = None,
-    properties: list = None,
+    email: str | None = None,
+    phone: str | None = None,
+    first_name: str | None = None,
+    last_name: str | None = None,
+    email_consent: str | None = None,
+    properties: list | None = None,
 ) -> dict:
     """
     Create a new contact in Tidio. Always creates a new contact; existing data is never overwritten.
@@ -147,11 +152,7 @@ def create_contact(
     Raises:
         ValueError: If any of the provided arguments have invalid values.
     """
-    if not distinct_id:
-        raise ValueError("Distinct ID must not be empty")
-
-    if len(distinct_id) > 55:
-        raise ValueError("Distinct ID must not exceed 55 characters")
+    _validate_distinct_id(distinct_id)
 
     no_field_provided = all(
         field is None for field in (email, phone, first_name, last_name)
@@ -161,11 +162,8 @@ def create_contact(
             "At least one of email, first_name, last_name, or phone must be provided"
         )
 
-    if email_consent is not None and email_consent not in [
-        "subscribed",
-        "unsubscribed",
-    ]:
-        raise ValueError("Email consent must be one of: subscribed, unsubscribed")
+    if email_consent is not None:
+        _validate_email_consent(email_consent)
 
     if properties is not None:
         _validate_properties(properties)
@@ -188,17 +186,18 @@ def create_contact(
 @mcp.tool(title="Update Contact")
 def update_contact(
     contact_id: str,
-    email: str = _UNSET,
-    phone: str = _UNSET,
-    first_name: str = _UNSET,
-    last_name: str = _UNSET,
-    email_consent: str = _UNSET,
+    email: str | None = _UNSET,
+    phone: str | None = _UNSET,
+    first_name: str | None = _UNSET,
+    last_name: str | None = _UNSET,
+    email_consent: str | None = _UNSET,
     distinct_id: str = _UNSET,
-    properties: list = _UNSET,
+    properties: list | None = _UNSET,
 ) -> dict:
     """
     Update a specific contact in Tidio. Pass only the fields you want to update.
-    Omitted fields remain unchanged; null values clear the field.
+    Omitted fields remain unchanged; null clears the field
+    (except distinct_id, which cannot be cleared).
 
     Args:
         contact_id (str): Required. The UUID of the contact to update.
@@ -209,6 +208,7 @@ def update_contact(
         email_consent (str, optional): Email consent status.
             Must be one of: 'subscribed', 'unsubscribed'.
         distinct_id (str, optional): External system identifier. Maximum 55 characters.
+            Cannot be cleared (null is not accepted).
         properties (list, optional): List of custom contact properties to update.
             Each item must be a dict with 'name' (max 128 chars) and 'value' (max 1000 chars) fields.
             Example: [{"name": "plan", "value": "premium"}, {"name": "score", "value": 42}]
@@ -219,19 +219,14 @@ def update_contact(
     Raises:
         ValueError: If any of the provided arguments have invalid values.
     """
-    invalid_email_consent = (
-        email_consent is not _UNSET
-        and email_consent is not None
-        and email_consent not in ["subscribed", "unsubscribed"]
-    )
-    if invalid_email_consent:
-        raise ValueError("Email consent must be one of: subscribed, unsubscribed")
+    if not contact_id or not contact_id.strip():
+        raise ValueError("Contact ID must not be empty")
 
-    invalid_distinct_id = (
-        distinct_id is not _UNSET and distinct_id is not None and len(distinct_id) > 55
-    )
-    if invalid_distinct_id:
-        raise ValueError("Distinct ID must not exceed 55 characters")
+    if email_consent is not _UNSET and email_consent is not None:
+        _validate_email_consent(email_consent)
+
+    if distinct_id is not _UNSET:
+        _validate_distinct_id(distinct_id)
 
     if properties is not _UNSET and properties is not None:
         _validate_properties(properties)
@@ -548,6 +543,22 @@ def strip_none(**kwargs):
     return {k: v for k, v in kwargs.items() if v is not None}
 
 
+def _validate_distinct_id(value) -> None:
+    if not value:
+        raise ValueError("Distinct ID must not be empty")
+    if len(value) > MAX_DISTINCT_ID_LENGTH:
+        raise ValueError(
+            f"Distinct ID must not exceed {MAX_DISTINCT_ID_LENGTH} characters"
+        )
+
+
+def _validate_email_consent(value) -> None:
+    if value not in EMAIL_CONSENT_VALUES:
+        raise ValueError(
+            f"Email consent must be one of: {', '.join(EMAIL_CONSENT_VALUES)}"
+        )
+
+
 def _validate_properties(properties) -> None:
     if not isinstance(properties, list):
         raise ValueError("Properties must be a list of objects")
@@ -558,10 +569,14 @@ def _validate_properties(properties) -> None:
             raise ValueError(
                 "Each property must contain both 'name' and 'value' fields"
             )
-        if len(str(prop["name"])) > 128:
-            raise ValueError("Property name must not exceed 128 characters")
-        if len(str(prop["value"])) > 1000:
-            raise ValueError("Property value must not exceed 1000 characters")
+        if len(str(prop["name"])) > MAX_PROPERTY_NAME_LENGTH:
+            raise ValueError(
+                f"Property name must not exceed {MAX_PROPERTY_NAME_LENGTH} characters"
+            )
+        if len(str(prop["value"])) > MAX_PROPERTY_VALUE_LENGTH:
+            raise ValueError(
+                f"Property value must not exceed {MAX_PROPERTY_VALUE_LENGTH} characters"
+            )
 
 
 if __name__ == "__main__":
