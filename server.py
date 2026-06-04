@@ -10,6 +10,8 @@ load_dotenv()
 
 mcp = FastMCP("Tidio")
 
+_UNSET = object()
+
 tidio_api_client = TidioApiClient(
     client_id=os.getenv("TIDIO_CLIENT_ID", ""),
     client_secret=os.getenv("TIDIO_CLIENT_SECRET", ""),
@@ -202,13 +204,13 @@ def create_contact(
 @mcp.tool(title="Update Contact")
 def update_contact(
     contact_id: str,
-    email: str = None,
-    phone: str = None,
-    first_name: str = None,
-    last_name: str = None,
-    email_consent: str = None,
-    distinct_id: str = None,
-    properties: list = None,
+    email: str = _UNSET,
+    phone: str = _UNSET,
+    first_name: str = _UNSET,
+    last_name: str = _UNSET,
+    email_consent: str = _UNSET,
+    distinct_id: str = _UNSET,
+    properties: list = _UNSET,
 ) -> dict:
     """
     Update a specific contact in Tidio. Pass only the fields you want to update.
@@ -233,16 +235,16 @@ def update_contact(
     Raises:
         ValueError: If any of the provided arguments have invalid values.
     """
-    if email_consent is not None and email_consent not in [
+    if email_consent is not _UNSET and email_consent is not None and email_consent not in [
         "subscribed",
         "unsubscribed",
     ]:
         raise ValueError("Email consent must be one of: subscribed, unsubscribed")
 
-    if distinct_id is not None and len(distinct_id) > 55:
+    if distinct_id is not _UNSET and distinct_id is not None and len(distinct_id) > 55:
         raise ValueError("Distinct ID must not exceed 55 characters")
 
-    if properties is not None:
+    if properties is not _UNSET and properties is not None:
         if not isinstance(properties, list):
             raise ValueError("Properties must be a list of objects")
         for prop in properties:
@@ -259,25 +261,25 @@ def update_contact(
 
     update_data = {}
 
-    if email is not None:
+    if email is not _UNSET:
         update_data["email"] = email
 
-    if phone is not None:
+    if phone is not _UNSET:
         update_data["phone"] = phone
 
-    if first_name is not None:
+    if first_name is not _UNSET:
         update_data["first_name"] = first_name
 
-    if last_name is not None:
+    if last_name is not _UNSET:
         update_data["last_name"] = last_name
 
-    if email_consent is not None:
+    if email_consent is not _UNSET:
         update_data["email_consent"] = email_consent
 
-    if distinct_id is not None:
+    if distinct_id is not _UNSET:
         update_data["distinct_id"] = distinct_id
 
-    if properties is not None:
+    if properties is not _UNSET:
         update_data["properties"] = properties
 
     if not update_data:

@@ -1268,3 +1268,68 @@ class TestUpdateContact:
         assert json.loads(responses.calls[0].request.body) == {
             "email_consent": email_consent
         }
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "kwargs,expected_payload",
+        [
+            (
+                {"contact_id": "uuid", "email": None},
+                {"email": None},
+            ),
+            (
+                {"contact_id": "uuid", "phone": None},
+                {"phone": None},
+            ),
+            (
+                {"contact_id": "uuid", "first_name": None},
+                {"first_name": None},
+            ),
+            (
+                {"contact_id": "uuid", "last_name": None},
+                {"last_name": None},
+            ),
+            (
+                {"contact_id": "uuid", "email_consent": None},
+                {"email_consent": None},
+            ),
+            (
+                {"contact_id": "uuid", "distinct_id": None},
+                {"distinct_id": None},
+            ),
+            (
+                {"contact_id": "uuid", "properties": None},
+                {"properties": None},
+            ),
+        ],
+    )
+    @responses.activate
+    def test_update_contact_null_clears_field(self, kwargs, expected_payload):
+        contact_id = kwargs["contact_id"]
+        responses.add(
+            responses.PATCH,
+            f"https://api.tidio.com/contacts/{contact_id}",
+            status=204,
+        )
+
+        result = update_contact(**kwargs)
+
+        assert result == {"status": "ok", "data": {}}
+        assert json.loads(responses.calls[0].request.body) == expected_payload
+
+    @pytest.mark.unit
+    @responses.activate
+    def test_update_contact_omitted_field_not_in_payload(self):
+        contact_id = "535eb95e-107c-440a-8720-53649368a26a"
+        responses.add(
+            responses.PATCH,
+            f"https://api.tidio.com/contacts/{contact_id}",
+            status=204,
+        )
+
+        update_contact(contact_id=contact_id, first_name="John")
+
+        payload = json.loads(responses.calls[0].request.body)
+        assert "email" not in payload
+        assert "phone" not in payload
+        assert payload == {"first_name": "John"}
