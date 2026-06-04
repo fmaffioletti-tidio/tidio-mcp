@@ -5,6 +5,7 @@ import responses
 
 from server import (
     add_internal_note_to_a_ticket,
+    create_contact,
     create_ticket,
     delete_contact,
     delete_ticket,
@@ -17,8 +18,10 @@ from server import (
     get_tickets,
     reply_to_a_ticket,
     unassign_ticket,
+    update_contact,
     update_ticket,
 )
+from tidio_client import TidioApiError
 
 
 class TestGetDepartments:
@@ -994,3 +997,542 @@ class TestAddInternalNoteToATicket:
         # Act & Assert
         with pytest.raises(ValueError, match=expected_error):
             add_internal_note_to_a_ticket(ticket_id, content, operator_id)
+
+
+class TestCreateContact:
+    @pytest.mark.unit
+    @responses.activate
+    def test_create_contact_with_all_data(self):
+        # Arrange
+        contact_data = {"id": "535eb95e-107c-440a-8720-53649368a26a"}
+        responses.add(
+            responses.POST,
+            "https://api.tidio.com/contacts",
+            json=contact_data,
+            status=201,
+        )
+
+        # Act
+        result = create_contact(
+            distinct_id="ext-123",
+            email="john@example.com",
+            phone="+1234567890",
+            first_name="John",
+            last_name="Doe",
+            email_consent="subscribed",
+            properties=[{"name": "plan", "value": "premium"}],
+        )
+
+        # Assert
+        assert result == {"status": "ok", "data": contact_data}
+        assert len(responses.calls) == 1
+        assert json.loads(responses.calls[0].request.body) == {
+            "distinct_id": "ext-123",
+            "email": "john@example.com",
+            "phone": "+1234567890",
+            "first_name": "John",
+            "last_name": "Doe",
+            "email_consent": "subscribed",
+            "properties": [{"name": "plan", "value": "premium"}],
+        }
+
+    @pytest.mark.unit
+    @responses.activate
+    def test_create_contact_with_only_required_fields(self):
+        # Arrange
+        contact_data = {"id": "535eb95e-107c-440a-8720-53649368a26a"}
+        responses.add(
+            responses.POST,
+            "https://api.tidio.com/contacts",
+            json=contact_data,
+            status=201,
+        )
+
+        # Act
+        result = create_contact(distinct_id="ext-123", email="john@example.com")
+
+        # Assert
+        assert result == {"status": "ok", "data": contact_data}
+        assert json.loads(responses.calls[0].request.body) == {
+            "distinct_id": "ext-123",
+            "email": "john@example.com",
+        }
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "kwargs,expected_error",
+        [
+            (
+                {"distinct_id": "", "email": "a@b.com"},
+                "Distinct ID must not be empty",
+            ),
+            (
+                {"distinct_id": "x" * 56, "email": "a@b.com"},
+                "Distinct ID must not exceed 55 characters",
+            ),
+            (
+                {"distinct_id": "ext-123"},
+                "At least one of email, first_name, last_name, or phone must be provided",
+            ),
+            (
+                {
+                    "distinct_id": "ext-123",
+                    "email": "a@b.com",
+                    "email_consent": "invalid",
+                },
+                "Email consent must be one of: subscribed, unsubscribed",
+            ),
+            (
+                {
+                    "distinct_id": "ext-123",
+                    "email": "a@b.com",
+                    "properties": "not_a_list",
+                },
+                "Properties must be a list of objects",
+            ),
+            (
+                {
+                    "distinct_id": "ext-123",
+                    "email": "a@b.com",
+                    "properties": ["not_a_dict"],
+                },
+                "Each property must be a dictionary object",
+            ),
+            (
+                {
+                    "distinct_id": "ext-123",
+                    "email": "a@b.com",
+                    "properties": [{"name": "plan"}],
+                },
+                "Each property must contain both 'name' and 'value' fields",
+            ),
+            (
+                {
+                    "distinct_id": "ext-123",
+                    "email": "a@b.com",
+                    "properties": [{"name": "x" * 129, "value": "v"}],
+                },
+                "Property name must not exceed 128 characters",
+            ),
+            (
+                {
+                    "distinct_id": "ext-123",
+                    "email": "a@b.com",
+                    "properties": [{"name": "plan", "value": "x" * 1001}],
+                },
+                "Property value must not exceed 1000 characters",
+            ),
+        ],
+    )
+    def test_create_contact_validation_errors(self, kwargs, expected_error):
+        # Act & Assert
+        with pytest.raises(ValueError, match=expected_error):
+            create_contact(**kwargs)
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize("email_consent", ["subscribed", "unsubscribed"])
+    @responses.activate
+    def test_create_contact_valid_email_consent_values(self, email_consent):
+        # Arrange
+        contact_data = {"id": "535eb95e-107c-440a-8720-53649368a26a"}
+        responses.add(
+            responses.POST,
+            "https://api.tidio.com/contacts",
+            json=contact_data,
+            status=201,
+        )
+
+        # Act
+        result = create_contact(
+            distinct_id="ext-123",
+            email="john@example.com",
+            email_consent=email_consent,
+        )
+
+        # Assert
+        assert result == {"status": "ok", "data": contact_data}
+        assert (
+            json.loads(responses.calls[0].request.body)["email_consent"]
+            == email_consent
+        )
+
+    @pytest.mark.unit
+    @responses.activate
+    def test_create_contact_accepts_max_length_values(self):
+        # Arrange
+        contact_data = {"id": "535eb95e-107c-440a-8720-53649368a26a"}
+        responses.add(
+            responses.POST,
+            "https://api.tidio.com/contacts",
+            json=contact_data,
+            status=201,
+        )
+
+        # Act
+        result = create_contact(
+            distinct_id="x" * 55,
+            email="john@example.com",
+            properties=[{"name": "x" * 128, "value": "x" * 1000}],
+        )
+
+        # Assert
+        assert result == {"status": "ok", "data": contact_data}
+        assert json.loads(responses.calls[0].request.body) == {
+            "distinct_id": "x" * 55,
+            "email": "john@example.com",
+            "properties": [{"name": "x" * 128, "value": "x" * 1000}],
+        }
+
+    @pytest.mark.unit
+    @responses.activate
+    def test_create_contact_omits_none_fields(self):
+        # Arrange
+        contact_data = {"id": "535eb95e-107c-440a-8720-53649368a26a"}
+        responses.add(
+            responses.POST,
+            "https://api.tidio.com/contacts",
+            json=contact_data,
+            status=201,
+        )
+
+        # Act
+        create_contact(distinct_id="ext-123", email="a@b.com", phone=None)
+
+        # Assert
+        assert json.loads(responses.calls[0].request.body) == {
+            "distinct_id": "ext-123",
+            "email": "a@b.com",
+        }
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize("field", ["phone", "first_name", "last_name"])
+    @responses.activate
+    def test_create_contact_accepts_single_identity_field(self, field):
+        # Arrange
+        contact_data = {"id": "535eb95e-107c-440a-8720-53649368a26a"}
+        responses.add(
+            responses.POST,
+            "https://api.tidio.com/contacts",
+            json=contact_data,
+            status=201,
+        )
+
+        # Act
+        create_contact(distinct_id="ext-123", **{field: "value"})
+
+        # Assert
+        assert json.loads(responses.calls[0].request.body) == {
+            "distinct_id": "ext-123",
+            field: "value",
+        }
+
+    @pytest.mark.unit
+    @responses.activate
+    def test_create_contact_accepts_numeric_property_value(self):
+        # Arrange
+        contact_data = {"id": "535eb95e-107c-440a-8720-53649368a26a"}
+        responses.add(
+            responses.POST,
+            "https://api.tidio.com/contacts",
+            json=contact_data,
+            status=201,
+        )
+
+        # Act
+        create_contact(
+            distinct_id="ext-123",
+            email="a@b.com",
+            properties=[{"name": "score", "value": 42}],
+        )
+
+        # Assert
+        body = json.loads(responses.calls[0].request.body)
+        assert body["properties"] == [{"name": "score", "value": 42}]
+
+    @pytest.mark.unit
+    @responses.activate
+    def test_create_contact_propagates_api_error(self):
+        # Arrange
+        responses.add(
+            responses.POST,
+            "https://api.tidio.com/contacts",
+            status=422,
+        )
+
+        # Act & Assert
+        with pytest.raises(TidioApiError):
+            create_contact(distinct_id="ext-123", email="a@b.com")
+
+
+class TestUpdateContact:
+    @pytest.mark.unit
+    @responses.activate
+    def test_update_contact_with_all_data(self):
+        # Arrange
+        contact_id = "535eb95e-107c-440a-8720-53649368a26a"
+        responses.add(
+            responses.PATCH,
+            f"https://api.tidio.com/contacts/{contact_id}",
+            status=204,
+        )
+
+        # Act
+        result = update_contact(
+            contact_id=contact_id,
+            email="john@example.com",
+            phone="+1234567890",
+            first_name="John",
+            last_name="Doe",
+            email_consent="subscribed",
+            distinct_id="ext-123",
+            properties=[{"name": "plan", "value": "premium"}],
+        )
+
+        # Assert
+        assert result == {"status": "ok", "data": {}}
+        assert len(responses.calls) == 1
+        assert json.loads(responses.calls[0].request.body) == {
+            "email": "john@example.com",
+            "phone": "+1234567890",
+            "first_name": "John",
+            "last_name": "Doe",
+            "email_consent": "subscribed",
+            "distinct_id": "ext-123",
+            "properties": [{"name": "plan", "value": "premium"}],
+        }
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "kwargs,expected_error",
+        [
+            (
+                {"contact_id": ""},
+                "Contact ID must not be empty",
+            ),
+            (
+                {"contact_id": "   "},
+                "Contact ID must not be empty",
+            ),
+            (
+                {"contact_id": "uuid", "email_consent": "invalid"},
+                "Email consent must be one of: subscribed, unsubscribed",
+            ),
+            (
+                {"contact_id": "uuid", "distinct_id": "x" * 56},
+                "Distinct ID must not exceed 55 characters",
+            ),
+            (
+                {"contact_id": "uuid", "distinct_id": None},
+                "Distinct ID must not be empty",
+            ),
+            (
+                {"contact_id": "uuid", "email": "a@b.com", "properties": "not_a_list"},
+                "Properties must be a list of objects",
+            ),
+            (
+                {
+                    "contact_id": "uuid",
+                    "email": "a@b.com",
+                    "properties": ["not_a_dict"],
+                },
+                "Each property must be a dictionary object",
+            ),
+            (
+                {
+                    "contact_id": "uuid",
+                    "email": "a@b.com",
+                    "properties": [{"name": "plan"}],
+                },
+                "Each property must contain both 'name' and 'value' fields",
+            ),
+            (
+                {
+                    "contact_id": "uuid",
+                    "email": "a@b.com",
+                    "properties": [{"name": "x" * 129, "value": "v"}],
+                },
+                "Property name must not exceed 128 characters",
+            ),
+            (
+                {
+                    "contact_id": "uuid",
+                    "email": "a@b.com",
+                    "properties": [{"name": "plan", "value": "x" * 1001}],
+                },
+                "Property value must not exceed 1000 characters",
+            ),
+            (
+                {"contact_id": "uuid"},
+                "At least one parameter must be provided",
+            ),
+        ],
+    )
+    def test_update_contact_validation_errors(self, kwargs, expected_error):
+        # Act & Assert
+        with pytest.raises(ValueError, match=expected_error):
+            update_contact(**kwargs)
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize("email_consent", ["subscribed", "unsubscribed"])
+    @responses.activate
+    def test_update_contact_valid_email_consent_values(self, email_consent):
+        # Arrange
+        contact_id = "535eb95e-107c-440a-8720-53649368a26a"
+        responses.add(
+            responses.PATCH,
+            f"https://api.tidio.com/contacts/{contact_id}",
+            status=204,
+        )
+
+        # Act
+        result = update_contact(contact_id=contact_id, email_consent=email_consent)
+
+        # Assert
+        assert result == {"status": "ok", "data": {}}
+        assert json.loads(responses.calls[0].request.body) == {
+            "email_consent": email_consent
+        }
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "kwargs,expected_payload",
+        [
+            (
+                {"contact_id": "uuid", "email": None},
+                {"email": None},
+            ),
+            (
+                {"contact_id": "uuid", "phone": None},
+                {"phone": None},
+            ),
+            (
+                {"contact_id": "uuid", "first_name": None},
+                {"first_name": None},
+            ),
+            (
+                {"contact_id": "uuid", "last_name": None},
+                {"last_name": None},
+            ),
+            (
+                {"contact_id": "uuid", "email_consent": None},
+                {"email_consent": None},
+            ),
+            (
+                {"contact_id": "uuid", "properties": None},
+                {"properties": None},
+            ),
+        ],
+    )
+    @responses.activate
+    def test_update_contact_null_clears_field(self, kwargs, expected_payload):
+        contact_id = kwargs["contact_id"]
+        responses.add(
+            responses.PATCH,
+            f"https://api.tidio.com/contacts/{contact_id}",
+            status=204,
+        )
+
+        result = update_contact(**kwargs)
+
+        assert result == {"status": "ok", "data": {}}
+        assert json.loads(responses.calls[0].request.body) == expected_payload
+
+    @pytest.mark.unit
+    @responses.activate
+    def test_update_contact_omitted_field_not_in_payload(self):
+        contact_id = "535eb95e-107c-440a-8720-53649368a26a"
+        responses.add(
+            responses.PATCH,
+            f"https://api.tidio.com/contacts/{contact_id}",
+            status=204,
+        )
+
+        update_contact(contact_id=contact_id, first_name="John")
+
+        payload = json.loads(responses.calls[0].request.body)
+        assert "email" not in payload
+        assert "phone" not in payload
+        assert payload == {"first_name": "John"}
+
+    @pytest.mark.unit
+    @responses.activate
+    def test_update_contact_distinct_id_only(self):
+        contact_id = "535eb95e-107c-440a-8720-53649368a26a"
+        responses.add(
+            responses.PATCH,
+            f"https://api.tidio.com/contacts/{contact_id}",
+            status=204,
+        )
+
+        result = update_contact(contact_id=contact_id, distinct_id="ext-456")
+
+        assert result == {"status": "ok", "data": {}}
+        assert json.loads(responses.calls[0].request.body) == {"distinct_id": "ext-456"}
+
+    @pytest.mark.unit
+    @responses.activate
+    def test_update_contact_accepts_max_length_values(self):
+        contact_id = "535eb95e-107c-440a-8720-53649368a26a"
+        responses.add(
+            responses.PATCH,
+            f"https://api.tidio.com/contacts/{contact_id}",
+            status=204,
+        )
+
+        result = update_contact(
+            contact_id=contact_id,
+            distinct_id="x" * 55,
+            email="john@example.com",
+            properties=[{"name": "x" * 128, "value": "x" * 1000}],
+        )
+
+        assert result == {"status": "ok", "data": {}}
+        assert json.loads(responses.calls[0].request.body) == {
+            "distinct_id": "x" * 55,
+            "email": "john@example.com",
+            "properties": [{"name": "x" * 128, "value": "x" * 1000}],
+        }
+
+    @pytest.mark.unit
+    @responses.activate
+    def test_update_contact_mixes_set_and_clear(self):
+        contact_id = "535eb95e-107c-440a-8720-53649368a26a"
+        responses.add(
+            responses.PATCH,
+            f"https://api.tidio.com/contacts/{contact_id}",
+            status=204,
+        )
+
+        update_contact(contact_id=contact_id, email="new@x.com", phone=None)
+
+        assert json.loads(responses.calls[0].request.body) == {
+            "email": "new@x.com",
+            "phone": None,
+        }
+
+    @pytest.mark.unit
+    @responses.activate
+    def test_update_contact_sends_empty_properties_list(self):
+        contact_id = "535eb95e-107c-440a-8720-53649368a26a"
+        responses.add(
+            responses.PATCH,
+            f"https://api.tidio.com/contacts/{contact_id}",
+            status=204,
+        )
+
+        update_contact(contact_id=contact_id, properties=[])
+
+        assert json.loads(responses.calls[0].request.body) == {"properties": []}
+
+    @pytest.mark.unit
+    @responses.activate
+    def test_update_contact_propagates_api_error(self):
+        contact_id = "535eb95e-107c-440a-8720-53649368a26a"
+        responses.add(
+            responses.PATCH,
+            f"https://api.tidio.com/contacts/{contact_id}",
+            status=422,
+        )
+
+        with pytest.raises(TidioApiError):
+            update_contact(contact_id=contact_id, email="a@b.com")
