@@ -134,8 +134,15 @@ def create_contact(
     Create a new contact in Tidio. Always creates a new contact; existing data is never overwritten.
     At least one of email, first_name, last_name, or phone must be provided.
 
+    distinct_id is required and identifies the contact in your external system.
+    If the user has not supplied a distinct_id, ASK them for it. Do NOT invent one
+    or copy it from any other field — not from email, phone, name, email_consent, or
+    any custom property.
+
     Args:
         distinct_id (str): Required. ID of the contact in the external system. Maximum 55 characters.
+            Must be a real external-system identifier provided by the user. Never copy it
+            from email, phone, name, or any other property. Ask the user if it is missing.
         email (str, optional): Contact email address in RFC822 format.
         phone (str, optional): Contact phone number.
         first_name (str, optional): Contact's first name.
