@@ -83,6 +83,8 @@ You can quickly get started using the ready-to-use Docker image `adrmrn/tidio-mc
 - Unassign Ticket
 - Reply to Ticket
 - Add Internal Note to Ticket
+- Create Contact
+- Update Contact
 
 ## Missing Endpoints
 
