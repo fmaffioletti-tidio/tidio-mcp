@@ -23,7 +23,7 @@ This is a Tidio MCP (Model Context Protocol) server that provides integration wi
 
 **Run the MCP server:**
 ```bash
-python server.py
+uv run python server.py
 ```
 
 **Install dependencies:**
