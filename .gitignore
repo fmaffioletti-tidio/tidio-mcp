@@ -12,10 +12,7 @@ wheels/
 .DS_Store
 .idea
 .env
-.claude/
-.mcp.json
-CLAUDE.md
-DOCKER.md
+.claude/settings.local.json
 docs/
 .coverage
 htmlcov/
