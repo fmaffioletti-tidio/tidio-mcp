@@ -16,5 +16,6 @@ wheels/
 .mcp.json
 CLAUDE.md
 DOCKER.md
+docs/
 .coverage
 htmlcov/
